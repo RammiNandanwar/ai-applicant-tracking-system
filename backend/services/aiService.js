@@ -1,4 +1,4 @@
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenAI, Type } = require("@google/genai");
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY
@@ -8,6 +8,7 @@ const analyzeResume = async (
     resumeText,
     jobDescription
 ) => {
+
     const prompt = `
 You are an AI-powered Applicant Tracking System.
 
@@ -19,71 +20,116 @@ ${jobDescription}
 CANDIDATE RESUME:
 ${resumeText}
 
-Return ONLY valid JSON using this exact structure:
+Analyze the candidate objectively.
 
-{
-    "matchScore": 0,
-    "skills": [],
-    "experience": "",
-    "strengths": [],
-    "missingSkills": [],
-    "summary": ""
-}
+Do not invent information that is not present in the resume.
 
-Rules:
-
-- matchScore must be between 0 and 100.
-- skills must contain relevant skills found in the resume.
-- experience must describe relevant experience found in the resume.
-- strengths must contain relevant strengths.
-- missingSkills must contain important skills required by the job but missing or weak in the resume.
-- summary must briefly explain the candidate's suitability.
-- Do not invent information.
-- Return JSON only.
+Return the candidate analysis using the requested JSON structure.
 `;
 
     try {
+
         console.log("Calling Gemini API...");
 
         const response = await ai.models.generateContent({
             model: "gemini-3.6-flash",
-            contents: prompt
+
+            contents: prompt,
+
+            config: {
+                responseMimeType: "application/json",
+
+                responseSchema: {
+                    type: Type.OBJECT,
+
+                    properties: {
+
+                        matchScore: {
+                            type: Type.NUMBER,
+                            description:
+                                "Candidate match score from 0 to 100"
+                        },
+
+                        skills: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.STRING
+                            },
+                            description:
+                                "Relevant skills found in the resume"
+                        },
+
+                        experience: {
+                            type: Type.STRING,
+                            description:
+                                "Relevant experience found in the resume"
+                        },
+
+                        strengths: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.STRING
+                            },
+                            description:
+                                "Candidate strengths relevant to the job"
+                        },
+
+                        missingSkills: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.STRING
+                            },
+                            description:
+                                "Important job skills missing or weak in the resume"
+                        },
+
+                        summary: {
+                            type: Type.STRING,
+                            description:
+                                "Brief explanation of candidate suitability"
+                        }
+
+                    },
+
+                    required: [
+                        "matchScore",
+                        "skills",
+                        "experience",
+                        "strengths",
+                        "missingSkills",
+                        "summary"
+                    ]
+                }
+            }
         });
 
         console.log("Gemini response received.");
 
-        let output = response.text;
-
-        if (!output) {
+        if (!response.text) {
             throw new Error(
                 "Gemini returned an empty response"
             );
         }
 
-        output = output.trim();
+        const analysis = JSON.parse(
+            response.text
+        );
 
-        // Remove markdown code fences if Gemini returns them
-        if (output.startsWith("```json")) {
-            output = output
-                .replace("```json", "")
-                .replace("```", "")
-                .trim();
-        }
-
-        if (output.startsWith("```")) {
-            output = output
-                .replace("```", "")
-                .trim();
-        }
-
-        const analysis = JSON.parse(output);
+        // Make sure score stays between 0 and 100
+        analysis.matchScore = Math.max(
+            0,
+            Math.min(
+                100,
+                Number(analysis.matchScore)
+            )
+        );
 
         return analysis;
 
     } catch (error) {
 
         console.error(
-            "Gemini API error:"
+            "Gemini AI analysis error:"
         );
 
         console.error(error);
