@@ -2,18 +2,13 @@ const Application = require("../models/application");
 const Job = require("../models/job");
 const extractResumeText = require("../utils/resumeParser");
 const analyzeResume = require("../services/aiService");
-
-// ======================================
-// APPLY FOR A JOB
-// ======================================
+const {
+    sendApplicationStatusEmail
+} = require("../services/emailService");
 
 exports.applyForJob = async (req, res) => {
     try {
         const { coverLetter } = req.body;
-
-        // ======================================
-        // CHECK JOB
-        // ======================================
 
         const job = await Job.findOne({
             _id: req.params.jobId,
@@ -25,10 +20,6 @@ exports.applyForJob = async (req, res) => {
                 error: "Job not found or no longer active"
             });
         }
-
-        // ======================================
-        // CHECK DUPLICATE APPLICATION
-        // ======================================
 
         const existingApplication =
             await Application.findOne({
@@ -43,24 +34,14 @@ exports.applyForJob = async (req, res) => {
             });
         }
 
-        // ======================================
-        // CHECK RESUME
-        // ======================================
-
         if (!req.file) {
             return res.status(400).json({
                 error: "Resume PDF is required"
             });
         }
 
-        // ======================================
-        // EXTRACT RESUME TEXT
-        // ======================================
-
         const extractedText =
-            await extractResumeText(
-                req.file.path
-            );
+            await extractResumeText(req.file.path);
 
         if (!extractedText) {
             return res.status(400).json({
@@ -69,28 +50,16 @@ exports.applyForJob = async (req, res) => {
             });
         }
 
-        // ======================================
-        // AI ANALYSIS
-        // ======================================
-
         const aiAnalysis = await analyzeResume(
             extractedText,
             job.description
         );
 
-        // ======================================
-        // CREATE APPLICATION
-        // ======================================
-
         const application =
             await Application.create({
                 job: job._id,
-
                 applicant: req.user._id,
-
-                coverLetter:
-                    coverLetter || "",
-
+                coverLetter: coverLetter || "",
                 status: "applied",
 
                 resume: {
@@ -127,10 +96,6 @@ exports.applyForJob = async (req, res) => {
                 }
             });
 
-        // ======================================
-        // POPULATE APPLICATION
-        // ======================================
-
         const populatedApplication =
             await Application.findById(
                 application._id
@@ -144,17 +109,13 @@ exports.applyForJob = async (req, res) => {
                     "name email"
                 );
 
-        // ======================================
-        // RESPONSE
-        // ======================================
-
         res.status(201).json({
             message:
                 "Application submitted and AI analysis completed",
 
-            application: populatedApplication
+            application:
+                populatedApplication
         });
-
     } catch (error) {
         console.error(
             "Application + AI analysis error:",
@@ -166,10 +127,6 @@ exports.applyForJob = async (req, res) => {
         });
     }
 };
-
-// ======================================
-// GET APPLICANT'S APPLICATIONS
-// ======================================
 
 exports.getMyApplications = async (req, res) => {
     try {
@@ -189,23 +146,17 @@ exports.getMyApplications = async (req, res) => {
             count: applications.length,
             applications
         });
-
     } catch (error) {
         res.status(500).json({
             error: error.message
         });
     }
 };
-// ======================================
-// GET APPLICATIONS FOR A JOB
-// RECRUITER ONLY
-// ======================================
 
 exports.getJobApplications = async (req, res) => {
     try {
         const { jobId } = req.params;
 
-        // Find the job
         const job = await Job.findById(jobId);
 
         if (!job) {
@@ -214,7 +165,6 @@ exports.getJobApplications = async (req, res) => {
             });
         }
 
-        // Make sure the recruiter owns this job
         if (
             job.recruiter.toString() !==
             req.user._id.toString()
@@ -225,7 +175,6 @@ exports.getJobApplications = async (req, res) => {
             });
         }
 
-        // Get applications
         const applications =
             await Application.find({
                 job: jobId
@@ -239,7 +188,6 @@ exports.getJobApplications = async (req, res) => {
                     "title company location"
                 );
 
-        // Sort by AI match score
         applications.sort((a, b) => {
             const scoreA =
                 a.aiAnalysis?.matchScore || 0;
@@ -252,10 +200,8 @@ exports.getJobApplications = async (req, res) => {
 
         res.status(200).json({
             count: applications.length,
-
             applications
         });
-
     } catch (error) {
         console.error(
             "Get job applications error:",
@@ -266,12 +212,12 @@ exports.getJobApplications = async (req, res) => {
             error: error.message
         });
     }
+};
 
-    // ======================================
-// UPDATE APPLICATION STATUS
-// ======================================
-
-exports.updateApplicationStatus = async (req, res) => {
+exports.updateApplicationStatus = async (
+    req,
+    res
+) => {
     try {
         const { applicationId } = req.params;
         const { status } = req.body;
@@ -296,9 +242,10 @@ exports.updateApplicationStatus = async (req, res) => {
             });
         }
 
-        const application = await Application.findById(
-            applicationId
-        ).populate("job");
+        const application =
+            await Application.findById(
+                applicationId
+            ).populate("job");
 
         if (!application) {
             return res.status(404).json({
@@ -311,7 +258,8 @@ exports.updateApplicationStatus = async (req, res) => {
             req.user._id.toString()
         ) {
             return res.status(403).json({
-                error: "You are not authorized to update this application"
+                error:
+                    "You are not authorized to update this application"
             });
         }
 
@@ -320,18 +268,53 @@ exports.updateApplicationStatus = async (req, res) => {
         await application.save();
 
         const updatedApplication =
-            await Application.findById(applicationId)
-                .populate("applicant", "name email")
+            await Application.findById(
+                applicationId
+            )
+                .populate(
+                    "applicant",
+                    "name email"
+                )
                 .populate(
                     "job",
                     "title company location"
                 );
 
-        res.status(200).json({
-            message: "Application status updated successfully",
-            application: updatedApplication
-        });
+        // Send email notification
+        try {
+            await sendApplicationStatusEmail({
+                applicantEmail:
+                    updatedApplication.applicant.email,
 
+                applicantName:
+                    updatedApplication.applicant.name,
+
+                jobTitle:
+                    updatedApplication.job.title,
+
+                company:
+                    updatedApplication.job.company,
+
+                status
+            });
+
+            console.log(
+                "Application status email sent successfully"
+            );
+        } catch (emailError) {
+            console.error(
+                "Email notification failed:",
+                emailError.message
+            );
+        }
+
+        res.status(200).json({
+            message:
+                "Application status updated successfully",
+
+            application:
+                updatedApplication
+        });
     } catch (error) {
         console.error(
             "Update application status error:",
@@ -342,5 +325,4 @@ exports.updateApplicationStatus = async (req, res) => {
             error: error.message
         });
     }
-};
 };
