@@ -177,9 +177,36 @@ const CandidateRanking = () => {
                                             "No email"}
                                     </p>
 
-                                    <span className="status">
-                                        {application.status}
-                                    </span>
+                                    <select
+                                        className="status-select"
+                                        value={application.status}
+                                        onChange={(e) =>
+                                            handleStatusChange(
+                                                application._id,
+                                                e.target.value
+                                            )
+                                        }
+                                    >
+                                        <option value="applied">
+                                            Applied
+                                        </option>
+
+                                        <option value="shortlisted">
+                                            Shortlisted
+                                        </option>
+
+                                        <option value="interview">
+                                            Interview
+                                        </option>
+
+                                        <option value="selected">
+                                            Selected
+                                        </option>
+
+                                        <option value="rejected">
+                                            Rejected
+                                        </option>
+                                    </select>
                                 </div>
 
                                 {/* AI SCORE */}
@@ -632,6 +659,50 @@ const CandidateRanking = () => {
             `}</style>
         </div>
     );
+};
+const handleStatusChange = async (
+    applicationId,
+    newStatus
+) => {
+    try {
+        await API.patch(
+            `/applications/${applicationId}/status`,
+            {
+                status: newStatus
+            }
+        );
+
+        setApplications((previousApplications) =>
+            previousApplications.map((application) =>
+                application._id === applicationId
+                    ? {
+                        ...application,
+                        status: newStatus
+                    }
+                    : application
+            )
+        );
+
+    } catch (error) {
+        console.error(
+            "Status update error:",
+            error
+        );
+
+        alert(
+            error.response?.data?.error ||
+            "Unable to update application status"
+        );
+    }
+    <style>{`
+                .status-select {
+    padding: 7px 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    font-size: 12px;
+    `}</style>
 };
 
 export default CandidateRanking;

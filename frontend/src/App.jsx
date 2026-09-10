@@ -8,6 +8,7 @@ import {
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import MyApplications from "./pages/MyApplications";
 
 import JobBoard from "./pages/JobBoard";
 import JobDetails from "./pages/JobDetails";
@@ -79,6 +80,10 @@ function App() {
                     <Route
                         path="/jobs/:id/apply"
                         element={<ApplyJob />}
+                    />
+                    <Route
+                        path="/applications"
+                        element={<MyApplications />}
                     />
 
                     {/* Recruiter Candidate Ranking */}
