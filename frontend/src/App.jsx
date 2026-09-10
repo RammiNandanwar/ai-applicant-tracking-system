@@ -8,24 +8,22 @@ import {
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import MyApplications from "./pages/MyApplications";
-import ApplicationPipeline from "./pages/ApplicationPipeline";
-
 import JobBoard from "./pages/JobBoard";
 import JobDetails from "./pages/JobDetails";
 import ApplyJob from "./pages/ApplyJob";
 import CandidateRanking from "./pages/CandidateRanking";
+import MyApplications from "./pages/MyApplications";
+import ApplicationPipeline from "./pages/ApplicationPipeline";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
     return (
         <BrowserRouter>
+
             <Routes>
 
-                {/* =====================================
-                    DEFAULT ROUTE
-                ===================================== */}
+                {/* Public Routes */}
 
                 <Route
                     path="/"
@@ -37,10 +35,6 @@ function App() {
                     }
                 />
 
-                {/* =====================================
-                    PUBLIC ROUTES
-                ===================================== */}
-
                 <Route
                     path="/register"
                     element={<Register />}
@@ -50,8 +44,6 @@ function App() {
                     path="/login"
                     element={<Login />}
                 />
-
-                {/* Public Job Board */}
 
                 <Route
                     path="/jobs"
@@ -63,58 +55,55 @@ function App() {
                     element={<JobDetails />}
                 />
 
-                {/* =====================================
-                    PROTECTED ROUTES
-                ===================================== */}
+                {/* Protected Routes */}
 
                 <Route element={<ProtectedRoute />}>
-
-                    {/* Temporary Dashboard */}
 
                     <Route
                         path="/dashboard"
                         element={<Dashboard />}
                     />
 
-                    {/* Apply for Job */}
+                    <Route
+                        path="/applications"
+                        element={<MyApplications />}
+                    />
 
                     <Route
                         path="/jobs/:id/apply"
                         element={<ApplyJob />}
                     />
-                    <Route
-                        path="/applications"
-                        element={<MyApplications />}
-                    />
-                    <Route
-                        path="/recruiter/jobs/:jobId/pipeline"
-                        element={<ApplicationPipeline />}
-                    />
-
-                    {/* Recruiter Candidate Ranking */}
 
                     <Route
                         path="/recruiter/jobs/:jobId/candidates"
-                        element={<CandidateRanking />}
+                        element={
+                            <CandidateRanking />
+                        }
+                    />
+
+                    <Route
+                        path="/recruiter/jobs/:jobId/pipeline"
+                        element={
+                            <ApplicationPipeline />
+                        }
                     />
 
                 </Route>
 
-                {/* =====================================
-                    INVALID ROUTE
-                ===================================== */}
+                {/* Unknown URL */}
 
                 <Route
                     path="*"
                     element={
                         <Navigate
-                            to="/login"
+                            to="/dashboard"
                             replace
                         />
                     }
                 />
 
             </Routes>
+
         </BrowserRouter>
     );
 }
