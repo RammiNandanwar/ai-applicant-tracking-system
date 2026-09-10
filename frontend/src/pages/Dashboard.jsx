@@ -1156,6 +1156,17 @@ const RecruiterDashboard = ({
                                         View Candidates
                                     </button>
 
+                                    <button
+                                        className="ats-ranking-btn"
+                                        onClick={() =>
+                                            navigate(
+                                                `/recruiter/jobs/${job._id}/pipeline`
+                                            )
+                                        }
+                                    >
+                                        Application Pipeline
+                                    </button>
+
 
                                     <button
                                         className="ats-archive-btn"
