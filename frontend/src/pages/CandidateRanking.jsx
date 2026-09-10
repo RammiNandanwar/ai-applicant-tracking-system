@@ -1,19 +1,33 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import API from "../services/api";
 import { useAuth } from "../context/useAuth";
 
+const statuses = [
+    "all",
+    "applied",
+    "shortlisted",
+    "interview",
+    "selected",
+    "rejected"
+];
+
 const CandidateRanking = () => {
     const { jobId } = useParams();
-    const navigate = useNavigate();
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     const [applications, setApplications] = useState([]);
-    const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [search, setSearch] = useState("");
-    const [selectedCandidate, setSelectedCandidate] = useState(null);
+
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [minimumScore, setMinimumScore] = useState(0);
+    const [sortBy, setSortBy] = useState("score");
+
+    const [selectedCandidate, setSelectedCandidate] =
+        useState(null);
 
     useEffect(() => {
         if (!user) {
@@ -27,7 +41,7 @@ const CandidateRanking = () => {
         }
 
         fetchCandidates();
-    }, [jobId, user]);
+    }, [user, jobId]);
 
     const fetchCandidates = async () => {
         try {
@@ -38,55 +52,171 @@ const CandidateRanking = () => {
                 `/applications/job/${jobId}`
             );
 
-            setApplications(response.data.applications || []);
-
-            if (response.data.applications?.length > 0) {
-                setJob(response.data.applications[0].job);
-            }
+            setApplications(
+                response.data.applications || []
+            );
         } catch (error) {
-            console.error("Error fetching candidates:", error);
+            console.error(
+                "Error fetching candidates:",
+                error
+            );
 
             setError(
                 error.response?.data?.error ||
-                "Failed to load candidates"
+                "Unable to load candidates."
             );
         } finally {
             setLoading(false);
         }
     };
 
-    const getScoreClass = (score) => {
-        if (score >= 80) {
-            return "high";
-        }
+    const handleStatusChange = async (
+        applicationId,
+        newStatus
+    ) => {
+        try {
+            await API.patch(
+                `/applications/${applicationId}/status`,
+                {
+                    status: newStatus
+                }
+            );
 
-        if (score >= 60) {
-            return "medium";
-        }
+            setApplications((current) =>
+                current.map((application) =>
+                    application._id === applicationId
+                        ? {
+                              ...application,
+                              status: newStatus
+                          }
+                        : application
+                )
+            );
 
-        return "low";
+            if (
+                selectedCandidate?._id ===
+                applicationId
+            ) {
+                setSelectedCandidate((current) => ({
+                    ...current,
+                    status: newStatus
+                }));
+            }
+        } catch (error) {
+            console.error(
+                "Error updating application status:",
+                error
+            );
+
+            alert(
+                error.response?.data?.error ||
+                "Unable to update application status."
+            );
+        }
     };
 
-    const filteredApplications = applications.filter((application) => {
-        const name =
-            application.applicant?.name?.toLowerCase() || "";
+    const clearFilters = () => {
+        setSearchTerm("");
+        setStatusFilter("all");
+        setMinimumScore(0);
+        setSortBy("score");
+    };
 
-        const email =
-            application.applicant?.email?.toLowerCase() || "";
+    const filteredCandidates = useMemo(() => {
+        let result = [...applications];
 
-        const searchValue = search.toLowerCase();
+        const search = searchTerm
+            .trim()
+            .toLowerCase();
 
-        return (
-            name.includes(searchValue) ||
-            email.includes(searchValue)
-        );
-    });
+        if (search) {
+            result = result.filter((application) => {
+                const name =
+                    application.applicant?.name
+                        ?.toLowerCase() || "";
+
+                const email =
+                    application.applicant?.email
+                        ?.toLowerCase() || "";
+
+                return (
+                    name.includes(search) ||
+                    email.includes(search)
+                );
+            });
+        }
+
+        if (statusFilter !== "all") {
+            result = result.filter(
+                (application) =>
+                    application.status ===
+                    statusFilter
+            );
+        }
+
+        result = result.filter((application) => {
+            const score =
+                application.aiAnalysis?.matchScore || 0;
+
+            return score >= Number(minimumScore);
+        });
+
+        if (sortBy === "score") {
+            result.sort((a, b) => {
+                const scoreA =
+                    a.aiAnalysis?.matchScore || 0;
+
+                const scoreB =
+                    b.aiAnalysis?.matchScore || 0;
+
+                return scoreB - scoreA;
+            });
+        }
+
+        if (sortBy === "score-low") {
+            result.sort((a, b) => {
+                const scoreA =
+                    a.aiAnalysis?.matchScore || 0;
+
+                const scoreB =
+                    b.aiAnalysis?.matchScore || 0;
+
+                return scoreA - scoreB;
+            });
+        }
+
+        if (sortBy === "newest") {
+            result.sort(
+                (a, b) =>
+                    new Date(b.createdAt) -
+                    new Date(a.createdAt)
+            );
+        }
+
+        if (sortBy === "oldest") {
+            result.sort(
+                (a, b) =>
+                    new Date(a.createdAt) -
+                    new Date(b.createdAt)
+            );
+        }
+
+        return result;
+    }, [
+        applications,
+        searchTerm,
+        statusFilter,
+        minimumScore,
+        sortBy
+    ]);
 
     if (loading) {
         return (
             <div className="candidate-page">
-                <div className="loading">
-                    Loading candidates...
+                <div className="candidate-state">
+                    <h2>
+                        Loading candidates...
+                    </h2>
                 </div>
             </div>
         );
@@ -95,191 +225,456 @@ const CandidateRanking = () => {
     return (
         <div className="candidate-page">
 
-            {/* HEADER */}
-            <div className="candidate-header">
+            <header className="candidate-header">
+
                 <div>
                     <button
                         className="back-button"
-                        onClick={() => navigate("/dashboard")}
+                        onClick={() =>
+                            navigate("/dashboard")
+                        }
                     >
-                        ← Back
+                        ← Dashboard
                     </button>
 
-                    <h1>Candidate Ranking</h1>
+                    <h1>
+                        Candidate Ranking
+                    </h1>
 
-                    {job && (
-                        <p>
-                            {job.title} • {job.company}
-                        </p>
-                    )}
+                    <p>
+                        Review and rank candidates
+                        using AI-powered resume
+                        analysis.
+                    </p>
                 </div>
 
-                <div className="candidate-count">
-                    <strong>{applications.length}</strong>
-                    <span>Applicants</span>
-                </div>
-            </div>
+                <button
+                    className="pipeline-button"
+                    onClick={() =>
+                        navigate(
+                            `/recruiter/jobs/${jobId}/pipeline`
+                        )
+                    }
+                >
+                    Application Pipeline
+                </button>
 
-            {/* ERROR */}
+            </header>
+
             {error && (
-                <div className="error-message">
+                <div className="candidate-error">
                     {error}
                 </div>
             )}
 
-            {/* SEARCH */}
-            <div className="search-container">
-                <input
-                    type="text"
-                    placeholder="Search candidate by name or email..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-            </div>
+            {!error && (
+                <>
+                    <div className="stats-card">
 
-            {/* CANDIDATES */}
-            {filteredApplications.length === 0 ? (
-                <div className="empty-state">
-                    <h2>No candidates found</h2>
-                    <p>
-                        {applications.length === 0
-                            ? "No one has applied for this job yet."
-                            : "No candidates match your search."}
-                    </p>
-                </div>
-            ) : (
-                <div className="candidate-list">
+                        <div>
+                            <span>
+                                Total Applications
+                            </span>
 
-                    {filteredApplications.map((application, index) => {
-                        const score =
-                            application.aiAnalysis?.matchScore || 0;
+                            <strong>
+                                {applications.length}
+                            </strong>
+                        </div>
 
-                        return (
-                            <div
-                                className="candidate-card"
-                                key={application._id}
+                        <div>
+                            <span>
+                                Showing Candidates
+                            </span>
+
+                            <strong>
+                                {
+                                    filteredCandidates.length
+                                }
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>
+                                Top AI Score
+                            </span>
+
+                            <strong>
+                                {applications.length
+                                    ? Math.max(
+                                          ...applications.map(
+                                              (application) =>
+                                                  application
+                                                      .aiAnalysis
+                                                      ?.matchScore ||
+                                                  0
+                                          )
+                                      ) + "%"
+                                    : "0%"}
+                            </strong>
+                        </div>
+
+                    </div>
+
+                    <div className="filters-card">
+
+                        <div className="filter-group">
+
+                            <label>
+                                Search Candidate
+                            </label>
+
+                            <input
+                                type="text"
+                                placeholder="Name or email..."
+                                value={searchTerm}
+                                onChange={(e) =>
+                                    setSearchTerm(
+                                        e.target.value
+                                    )
+                                }
+                            />
+
+                        </div>
+
+                        <div className="filter-group">
+
+                            <label>
+                                Status
+                            </label>
+
+                            <select
+                                value={statusFilter}
+                                onChange={(e) =>
+                                    setStatusFilter(
+                                        e.target.value
+                                    )
+                                }
                             >
-
-                                {/* RANK */}
-                                <div className="candidate-rank">
-                                    #{index + 1}
-                                </div>
-
-                                {/* BASIC INFO */}
-                                <div className="candidate-info">
-                                    <h2>
-                                        {application.applicant?.name ||
-                                            "Unknown Candidate"}
-                                    </h2>
-
-                                    <p>
-                                        {application.applicant?.email ||
-                                            "No email"}
-                                    </p>
-
-                                    <select
-                                        className="status-select"
-                                        value={application.status}
-                                        onChange={(e) =>
-                                            handleStatusChange(
-                                                application._id,
-                                                e.target.value
-                                            )
-                                        }
-                                    >
-                                        <option value="applied">
-                                            Applied
+                                {statuses.map(
+                                    (status) => (
+                                        <option
+                                            key={status}
+                                            value={status}
+                                        >
+                                            {status ===
+                                            "all"
+                                                ? "All Statuses"
+                                                : status}
                                         </option>
+                                    )
+                                )}
+                            </select>
 
-                                        <option value="shortlisted">
-                                            Shortlisted
-                                        </option>
+                        </div>
 
-                                        <option value="interview">
-                                            Interview
-                                        </option>
+                        <div className="filter-group">
 
-                                        <option value="selected">
-                                            Selected
-                                        </option>
+                            <label>
+                                Minimum AI Score
+                            </label>
 
-                                        <option value="rejected">
-                                            Rejected
-                                        </option>
-                                    </select>
-                                </div>
+                            <select
+                                value={minimumScore}
+                                onChange={(e) =>
+                                    setMinimumScore(
+                                        e.target.value
+                                    )
+                                }
+                            >
+                                <option value="0">
+                                    Any Score
+                                </option>
 
-                                {/* AI SCORE */}
-                                <div className="score-section">
-                                    <div
-                                        className={`score ${getScoreClass(
-                                            score
-                                        )}`}
-                                    >
-                                        {score}%
-                                    </div>
+                                <option value="50">
+                                    50%+
+                                </option>
 
-                                    <span>AI Match Score</span>
-                                </div>
+                                <option value="60">
+                                    60%+
+                                </option>
 
-                                {/* SKILLS */}
-                                <div className="skills-section">
-                                    <h4>Skills</h4>
+                                <option value="70">
+                                    70%+
+                                </option>
 
-                                    <div className="skills">
-                                        {application.aiAnalysis?.skills
-                                            ?.slice(0, 5)
-                                            .map((skill, skillIndex) => (
-                                                <span key={skillIndex}>
-                                                    {skill}
-                                                </span>
-                                            ))}
-                                    </div>
-                                </div>
+                                <option value="80">
+                                    80%+
+                                </option>
 
-                                {/* VIEW BUTTON */}
-                                <button
-                                    className="view-button"
-                                    onClick={() =>
-                                        setSelectedCandidate(
-                                            application
-                                        )
-                                    }
-                                >
-                                    View Analysis
-                                </button>
-                            </div>
-                        );
-                    })}
-                </div>
+                                <option value="90">
+                                    90%+
+                                </option>
+                            </select>
+
+                        </div>
+
+                        <div className="filter-group">
+
+                            <label>
+                                Sort By
+                            </label>
+
+                            <select
+                                value={sortBy}
+                                onChange={(e) =>
+                                    setSortBy(
+                                        e.target.value
+                                    )
+                                }
+                            >
+                                <option value="score">
+                                    AI Score: High → Low
+                                </option>
+
+                                <option value="score-low">
+                                    AI Score: Low → High
+                                </option>
+
+                                <option value="newest">
+                                    Newest Applications
+                                </option>
+
+                                <option value="oldest">
+                                    Oldest Applications
+                                </option>
+                            </select>
+
+                        </div>
+
+                        <button
+                            className="clear-button"
+                            onClick={clearFilters}
+                        >
+                            Clear Filters
+                        </button>
+
+                    </div>
+
+                    {filteredCandidates.length ===
+                        0 && (
+                        <div className="candidate-state">
+
+                            <h2>
+                                No candidates found
+                            </h2>
+
+                            <p>
+                                Try changing your
+                                search or filters.
+                            </p>
+
+                        </div>
+                    )}
+
+                    {filteredCandidates.length > 0 && (
+                        <div className="candidate-grid">
+
+                            {filteredCandidates.map(
+                                (application, index) => {
+
+                                    const applicant =
+                                        application.applicant;
+
+                                    const analysis =
+                                        application.aiAnalysis;
+
+                                    const score =
+                                        analysis?.matchScore ||
+                                        0;
+
+                                    return (
+                                        <div
+                                            className="candidate-card"
+                                            key={
+                                                application._id
+                                            }
+                                        >
+
+                                            <div className="rank">
+                                                #{index + 1}
+                                            </div>
+
+                                            <div className="candidate-top">
+
+                                                <div>
+                                                    <h2>
+                                                        {
+                                                            applicant?.name ||
+                                                            "Candidate"
+                                                        }
+                                                    </h2>
+
+                                                    <p>
+                                                        {
+                                                            applicant?.email ||
+                                                            "No email"
+                                                        }
+                                                    </p>
+                                                </div>
+
+                                                <div className="score">
+                                                    <strong>
+                                                        {score}%
+                                                    </strong>
+
+                                                    <span>
+                                                        AI Match
+                                                    </span>
+                                                </div>
+
+                                            </div>
+
+                                            <div className="candidate-status">
+
+                                                <select
+                                                    value={
+                                                        application.status
+                                                    }
+                                                    onChange={(
+                                                        e
+                                                    ) =>
+                                                        handleStatusChange(
+                                                            application._id,
+                                                            e
+                                                                .target
+                                                                .value
+                                                        )
+                                                    }
+                                                >
+                                                    {statuses
+                                                        .filter(
+                                                            (
+                                                                status
+                                                            ) =>
+                                                                status !==
+                                                                "all"
+                                                        )
+                                                        .map(
+                                                            (
+                                                                status
+                                                            ) => (
+                                                                <option
+                                                                    key={
+                                                                        status
+                                                                    }
+                                                                    value={
+                                                                        status
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        status
+                                                                    }
+                                                                </option>
+                                                            )
+                                                        )}
+                                                </select>
+
+                                            </div>
+
+                                            <div className="skills">
+
+                                                <h4>
+                                                    Skills
+                                                </h4>
+
+                                                <div className="skill-list">
+
+                                                    {analysis?.skills
+                                                        ?.slice(
+                                                            0,
+                                                            6
+                                                        )
+                                                        .map(
+                                                            (
+                                                                skill,
+                                                                skillIndex
+                                                            ) => (
+                                                                <span
+                                                                    key={
+                                                                        skillIndex
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        skill
+                                                                    }
+                                                                </span>
+                                                            )
+                                                        )}
+
+                                                </div>
+
+                                            </div>
+
+                                            <button
+                                                className="details-button"
+                                                onClick={() =>
+                                                    setSelectedCandidate(
+                                                        application
+                                                    )
+                                                }
+                                            >
+                                                View AI Analysis
+                                            </button>
+
+                                        </div>
+                                    );
+                                }
+                            )}
+
+                        </div>
+                    )}
+
+                </>
             )}
 
-            {/* CANDIDATE DETAILS MODAL */}
             {selectedCandidate && (
-                <div className="modal-overlay">
-                    <div className="candidate-modal">
+                <div
+                    className="modal-overlay"
+                    onClick={() =>
+                        setSelectedCandidate(null)
+                    }
+                >
+
+                    <div
+                        className="analysis-modal"
+                        onClick={(e) =>
+                            e.stopPropagation()
+                        }
+                    >
 
                         <button
                             className="close-button"
                             onClick={() =>
-                                setSelectedCandidate(null)
+                                setSelectedCandidate(
+                                    null
+                                )
                             }
                         >
                             ×
                         </button>
 
                         <h2>
-                            {selectedCandidate.applicant?.name}
+                            {
+                                selectedCandidate
+                                    .applicant?.name ||
+                                "Candidate"
+                            }
                         </h2>
 
-                        <p>
-                            {selectedCandidate.applicant?.email}
+                        <p className="modal-email">
+                            {
+                                selectedCandidate
+                                    .applicant?.email
+                            }
                         </p>
 
                         <div className="modal-score">
                             <strong>
-                                {selectedCandidate.aiAnalysis
-                                    ?.matchScore || 0}
+                                {
+                                    selectedCandidate
+                                        .aiAnalysis
+                                        ?.matchScore || 0
+                                }
                                 %
                             </strong>
 
@@ -288,101 +683,129 @@ const CandidateRanking = () => {
                             </span>
                         </div>
 
-                        <div className="analysis-section">
-                            <h3>Summary</h3>
+                        <section>
+                            <h3>
+                                Summary
+                            </h3>
 
                             <p>
-                                {selectedCandidate.aiAnalysis
-                                    ?.summary ||
-                                    "No summary available."}
+                                {
+                                    selectedCandidate
+                                        .aiAnalysis
+                                        ?.summary ||
+                                    "No summary available."
+                                }
                             </p>
-                        </div>
+                        </section>
 
-                        <div className="analysis-section">
-                            <h3>Skills</h3>
-
-                            <div className="skills">
-                                {selectedCandidate.aiAnalysis?.skills
-                                    ?.map((skill, index) => (
-                                        <span key={index}>
-                                            {skill}
-                                        </span>
-                                    ))}
-                            </div>
-                        </div>
-
-                        <div className="analysis-section">
-                            <h3>Experience</h3>
+                        <section>
+                            <h3>
+                                Experience
+                            </h3>
 
                             <p>
-                                {selectedCandidate.aiAnalysis
-                                    ?.experience ||
-                                    "No experience information available."}
+                                {
+                                    selectedCandidate
+                                        .aiAnalysis
+                                        ?.experience ||
+                                    "No experience information available."
+                                }
                             </p>
-                        </div>
+                        </section>
 
-                        <div className="analysis-section">
-                            <h3>Strengths</h3>
+                        <section>
+                            <h3>
+                                Strengths
+                            </h3>
 
                             <ul>
-                                {selectedCandidate.aiAnalysis?.strengths
-                                    ?.map((strength, index) => (
-                                        <li key={index}>
-                                            {strength}
-                                        </li>
-                                    ))}
-                            </ul>
-                        </div>
-
-                        <div className="analysis-section">
-                            <h3>Missing Skills</h3>
-
-                            {selectedCandidate.aiAnalysis
-                                ?.missingSkills?.length > 0 ? (
-                                <div className="missing-skills">
-                                    {selectedCandidate.aiAnalysis.missingSkills.map(
-                                        (skill, index) => (
-                                            <span key={index}>
-                                                {skill}
-                                            </span>
+                                {selectedCandidate
+                                    .aiAnalysis
+                                    ?.strengths?.length ? (
+                                    selectedCandidate.aiAnalysis.strengths.map(
+                                        (
+                                            strength,
+                                            index
+                                        ) => (
+                                            <li
+                                                key={
+                                                    index
+                                                }
+                                            >
+                                                {strength}
+                                            </li>
                                         )
-                                    )}
-                                </div>
-                            ) : (
-                                <p>
-                                    No major missing skills detected.
-                                </p>
-                            )}
-                        </div>
+                                    )
+                                ) : (
+                                    <li>
+                                        No strengths
+                                        available.
+                                    </li>
+                                )}
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h3>
+                                Missing Skills
+                            </h3>
+
+                            <ul>
+                                {selectedCandidate
+                                    .aiAnalysis
+                                    ?.missingSkills
+                                    ?.length ? (
+                                    selectedCandidate.aiAnalysis.missingSkills.map(
+                                        (
+                                            skill,
+                                            index
+                                        ) => (
+                                            <li
+                                                key={
+                                                    index
+                                                }
+                                            >
+                                                {skill}
+                                            </li>
+                                        )
+                                    )
+                                ) : (
+                                    <li>
+                                        No missing
+                                        skills found.
+                                    </li>
+                                )}
+                            </ul>
+                        </section>
 
                     </div>
+
                 </div>
             )}
 
-            {/* PAGE STYLES */}
             <style>{`
                 .candidate-page {
                     min-height: 100vh;
-                    padding: 40px;
+                    padding: 35px;
                     background: #f5f7fb;
-                    font-family: Arial, sans-serif;
                 }
 
                 .candidate-header {
                     display: flex;
                     justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 30px;
+                    align-items: flex-start;
+                    gap: 20px;
+                    margin-bottom: 25px;
                 }
 
                 .candidate-header h1 {
-                    margin: 10px 0 5px;
+                    margin: 12px 0 6px;
                     font-size: 32px;
                 }
 
                 .candidate-header p {
-                    color: #666;
                     margin: 0;
+                    color: #666;
                 }
 
                 .back-button {
@@ -392,154 +815,202 @@ const CandidateRanking = () => {
                     font-size: 15px;
                 }
 
-                .candidate-count {
-                    background: white;
-                    padding: 15px 25px;
-                    border-radius: 12px;
-                    display: flex;
-                    flex-direction: column;
-                    text-align: center;
-                    box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+                .pipeline-button {
+                    border: none;
+                    background: #111827;
+                    color: white;
+                    padding: 12px 18px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
                 }
 
-                .candidate-count strong {
+                .candidate-error {
+                    background: #fee2e2;
+                    color: #b91c1c;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                }
+
+                .stats-card {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 18px;
+                    margin-bottom: 20px;
+                }
+
+                .stats-card > div {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                }
+
+                .stats-card span {
+                    display: block;
+                    color: #777;
+                    font-size: 13px;
+                    margin-bottom: 8px;
+                }
+
+                .stats-card strong {
                     font-size: 25px;
                 }
 
-                .candidate-count span {
-                    color: #777;
-                    font-size: 13px;
-                }
-
-                .search-container {
+                .filters-card {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr 1fr 1.5fr auto;
+                    gap: 15px;
+                    align-items: end;
+                    background: white;
+                    padding: 20px;
+                    border-radius: 12px;
                     margin-bottom: 25px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
                 }
 
-                .search-container input {
+                .filter-group label {
+                    display: block;
+                    font-size: 13px;
+                    font-weight: 600;
+                    margin-bottom: 7px;
+                }
+
+                .filter-group input,
+                .filter-group select {
                     width: 100%;
-                    max-width: 500px;
-                    padding: 14px 16px;
-                    border: 1px solid #ddd;
-                    border-radius: 10px;
-                    font-size: 15px;
-                    outline: none;
                     box-sizing: border-box;
+                    padding: 10px;
+                    border: 1px solid #ddd;
+                    border-radius: 7px;
+                    background: white;
                 }
 
-                .candidate-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 18px;
+                .clear-button {
+                    padding: 10px 15px;
+                    border: 1px solid #ddd;
+                    background: white;
+                    border-radius: 7px;
+                    cursor: pointer;
+                    white-space: nowrap;
+                }
+
+                .candidate-grid {
+                    display: grid;
+                    grid-template-columns: repeat(
+                        auto-fill,
+                        minmax(300px, 1fr)
+                    );
+                    gap: 20px;
                 }
 
                 .candidate-card {
+                    position: relative;
                     background: white;
-                    border-radius: 15px;
                     padding: 22px;
-                    display: grid;
-                    grid-template-columns: 60px 1.5fr 130px 2fr 150px;
-                    gap: 20px;
-                    align-items: center;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+                    border-radius: 14px;
+                    box-shadow: 0 5px 18px rgba(0,0,0,0.06);
                 }
 
-                .candidate-rank {
-                    font-size: 20px;
-                    font-weight: bold;
-                    text-align: center;
+                .rank {
+                    position: absolute;
+                    top: 15px;
+                    right: 15px;
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: #777;
                 }
 
-                .candidate-info h2 {
+                .candidate-top {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 15px;
+                }
+
+                .candidate-top h2 {
                     margin: 0 0 5px;
                     font-size: 19px;
                 }
 
-                .candidate-info p {
-                    margin: 0 0 10px;
-                    color: #666;
-                    font-size: 14px;
-                }
-
-                .status {
-                    display: inline-block;
-                    padding: 5px 10px;
-                    background: #eef2ff;
-                    border-radius: 20px;
-                    font-size: 12px;
-                    text-transform: capitalize;
-                }
-
-                .score-section {
-                    text-align: center;
+                .candidate-top p {
+                    margin: 0;
+                    color: #777;
+                    font-size: 13px;
+                    word-break: break-word;
                 }
 
                 .score {
-                    font-size: 27px;
-                    font-weight: bold;
+                    text-align: center;
+                    min-width: 65px;
                 }
 
-                .score-section span {
+                .score strong {
+                    display: block;
+                    font-size: 22px;
+                }
+
+                .score span {
                     font-size: 11px;
                     color: #777;
                 }
 
-                .score.high {
-                    color: #16a34a;
+                .candidate-status {
+                    margin-top: 18px;
                 }
 
-                .score.medium {
-                    color: #d97706;
-                }
-
-                .score.low {
-                    color: #dc2626;
-                }
-
-                .skills-section h4 {
-                    margin: 0 0 8px;
+                .candidate-status select {
+                    width: 100%;
+                    padding: 9px;
+                    border: 1px solid #ddd;
+                    border-radius: 7px;
+                    text-transform: capitalize;
+                    background: white;
                 }
 
                 .skills {
+                    margin-top: 18px;
+                }
+
+                .skills h4 {
+                    margin: 0 0 10px;
+                }
+
+                .skill-list {
                     display: flex;
                     flex-wrap: wrap;
                     gap: 6px;
                 }
 
-                .skills span,
-                .missing-skills span {
+                .skill-list span {
+                    background: #f1f5f9;
                     padding: 5px 9px;
                     border-radius: 15px;
-                    background: #eef2f7;
                     font-size: 12px;
                 }
 
-                .view-button {
-                    padding: 11px 15px;
+                .details-button {
+                    width: 100%;
+                    margin-top: 20px;
+                    padding: 10px;
                     border: none;
-                    border-radius: 8px;
-                    cursor: pointer;
+                    border-radius: 7px;
                     background: #111827;
                     color: white;
+                    cursor: pointer;
+                    font-weight: 600;
                 }
 
-                .view-button:hover {
-                    opacity: 0.9;
-                }
-
-                .loading,
-                .empty-state {
+                .candidate-state {
                     background: white;
                     padding: 50px;
                     text-align: center;
-                    border-radius: 15px;
+                    border-radius: 14px;
+                    box-shadow: 0 5px 18px rgba(0,0,0,0.05);
                 }
 
-                .error-message {
-                    background: #fee2e2;
-                    color: #b91c1c;
-                    padding: 14px;
-                    border-radius: 10px;
-                    margin-bottom: 20px;
+                .candidate-state p {
+                    color: #777;
                 }
 
                 .modal-overlay {
@@ -553,156 +1024,87 @@ const CandidateRanking = () => {
                     z-index: 1000;
                 }
 
-                .candidate-modal {
+                .analysis-modal {
                     position: relative;
                     background: white;
                     width: 100%;
                     max-width: 700px;
                     max-height: 90vh;
                     overflow-y: auto;
-                    border-radius: 18px;
                     padding: 30px;
+                    border-radius: 15px;
                 }
 
                 .close-button {
                     position: absolute;
-                    top: 15px;
-                    right: 20px;
+                    right: 18px;
+                    top: 12px;
                     border: none;
                     background: transparent;
                     font-size: 30px;
                     cursor: pointer;
                 }
 
-                .candidate-modal h2 {
-                    margin-bottom: 5px;
-                }
-
-                .candidate-modal > p {
-                    color: #666;
+                .modal-email {
+                    color: #777;
                 }
 
                 .modal-score {
-                    margin: 25px 0;
-                    padding: 20px;
-                    border-radius: 12px;
-                    background: #f5f7fb;
-                    text-align: center;
+                    margin: 20px 0;
+                    padding: 18px;
+                    background: #f8fafc;
+                    border-radius: 10px;
                 }
 
                 .modal-score strong {
                     display: block;
-                    font-size: 42px;
+                    font-size: 32px;
                 }
 
                 .modal-score span {
-                    color: #666;
+                    color: #777;
                 }
 
-                .analysis-section {
-                    margin-top: 25px;
+                .analysis-modal section {
+                    margin-top: 20px;
                 }
 
-                .analysis-section h3 {
-                    margin-bottom: 8px;
+                .analysis-modal section h3 {
+                    margin-bottom: 7px;
                 }
 
-                .analysis-section p {
-                    color: #555;
+                .analysis-modal section p {
                     line-height: 1.6;
-                }
-
-                .analysis-section li {
-                    margin-bottom: 8px;
-                }
-
-                .missing-skills {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 8px;
+                    color: #555;
                 }
 
                 @media (max-width: 1000px) {
-                    .candidate-card {
-                        grid-template-columns: 50px 1fr 100px;
+                    .filters-card {
+                        grid-template-columns: repeat(2, 1fr);
                     }
 
-                    .skills-section {
-                        grid-column: 2 / 4;
-                    }
-
-                    .view-button {
-                        grid-column: 2 / 4;
+                    .stats-card {
+                        grid-template-columns: 1fr;
                     }
                 }
 
-                @media (max-width: 600px) {
+                @media (max-width: 700px) {
                     .candidate-page {
                         padding: 20px;
                     }
 
                     .candidate-header {
                         flex-direction: column;
-                        align-items: flex-start;
-                        gap: 20px;
                     }
 
-                    .candidate-card {
+                    .filters-card {
                         grid-template-columns: 1fr;
-                    }
-
-                    .skills-section,
-                    .view-button {
-                        grid-column: auto;
                     }
                 }
             `}</style>
+
         </div>
     );
-};
-const handleStatusChange = async (
-    applicationId,
-    newStatus
-) => {
-    try {
-        await API.patch(
-            `/applications/${applicationId}/status`,
-            {
-                status: newStatus
-            }
-        );
-
-        setApplications((previousApplications) =>
-            previousApplications.map((application) =>
-                application._id === applicationId
-                    ? {
-                        ...application,
-                        status: newStatus
-                    }
-                    : application
-            )
-        );
-
-    } catch (error) {
-        console.error(
-            "Status update error:",
-            error
-        );
-
-        alert(
-            error.response?.data?.error ||
-            "Unable to update application status"
-        );
-    }
-    <style>{`
-                .status-select {
-    padding: 7px 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: white;
-    cursor: pointer;
-    font-size: 12px;
-    `}</style>
 };
 
 export default CandidateRanking;
