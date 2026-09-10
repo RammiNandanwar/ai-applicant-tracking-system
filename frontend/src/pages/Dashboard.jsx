@@ -315,15 +315,41 @@ const Dashboard = () => {
     }
 
 
-    // ======================================
-    // RECRUITER DASHBOARD
-    // ======================================
+// ======================================
+// RECRUITER DASHBOARD
+// ======================================
 
-    return <RecruiterDashboard
-        user={user}
-        logout={logout}
-        navigate={navigate}
-    />;
+if (user?.role === "recruiter") {
+    return (
+        <RecruiterDashboard
+            user={user}
+            logout={logout}
+            navigate={navigate}
+        />
+    );
+}
+
+return (
+    <div className="ats-dashboard">
+        <div className="ats-state-card">
+            <h2>Unable to load dashboard</h2>
+            <p>
+                Your account role could not be determined.
+                Please log in again.
+            </p>
+
+            <button
+                className="ats-create-btn"
+                onClick={() => {
+                    logout();
+                    navigate("/login");
+                }}
+            >
+                Back to Login
+            </button>
+        </div>
+    </div>
+);
 };
 
 
@@ -1127,7 +1153,7 @@ const RecruiterDashboard = ({
                                             )
                                         }
                                     >
-                                        Candidate Ranking
+                                        View Candidates
                                     </button>
 
 
