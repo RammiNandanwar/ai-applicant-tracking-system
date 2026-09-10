@@ -7,6 +7,336 @@ const Dashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
+    // ======================================
+    // APPLICANT DASHBOARD
+    // ======================================
+
+    if (user?.role === "applicant") {
+        return (
+            <div className="ats-dashboard">
+
+                <header className="ats-header">
+
+                    <div>
+                        <h1>
+                            Applicant Dashboard
+                        </h1>
+
+                        <p>
+                            Welcome back! Find jobs and
+                            manage your applications.
+                        </p>
+                    </div>
+
+                    <div className="ats-user-section">
+
+                        <div className="ats-user-info">
+
+                            <strong>
+                                {user?.name}
+                            </strong>
+
+                            <span>
+                                {user?.email}
+                            </span>
+
+                            <small>
+                                Applicant
+                            </small>
+
+                        </div>
+
+                        <button
+                            className="ats-logout-btn"
+                            onClick={() => {
+                                logout();
+                                navigate("/login");
+                            }}
+                        >
+                            Logout
+                        </button>
+
+                    </div>
+
+                </header>
+
+
+                <section className="ats-applicant-content">
+
+                    <div className="ats-welcome-card">
+
+                        <div className="ats-welcome-icon">
+                            👋
+                        </div>
+
+                        <h2>
+                            Welcome, {user?.name}!
+                        </h2>
+
+                        <p>
+                            Explore available opportunities,
+                            apply for jobs and track your
+                            applications from one place.
+                        </p>
+
+                    </div>
+
+
+                    <div className="ats-applicant-actions">
+
+                        <div className="ats-action-card">
+
+                            <div className="ats-action-icon">
+                                💼
+                            </div>
+
+                            <h3>
+                                Browse Jobs
+                            </h3>
+
+                            <p>
+                                Find jobs that match your
+                                skills and experience.
+                            </p>
+
+                            <button
+                                className="ats-create-btn"
+                                onClick={() =>
+                                    navigate("/jobs")
+                                }
+                            >
+                                Browse Jobs
+                            </button>
+
+                        </div>
+
+
+                        <div className="ats-action-card">
+
+                            <div className="ats-action-icon">
+                                📄
+                            </div>
+
+                            <h3>
+                                My Applications
+                            </h3>
+
+                            <p>
+                                Track the jobs you have
+                                applied for.
+                            </p>
+
+                            <button
+                                className="ats-view-btn"
+                                onClick={() =>
+                                    navigate("/applications")
+                                }
+                            >
+                                View Applications
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <style>{`
+
+                    .ats-dashboard {
+                        min-height: 100vh;
+                        padding: 40px;
+                        background: #f5f7fb;
+                        font-family: Arial, sans-serif;
+                    }
+
+                    .ats-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 35px;
+                    }
+
+                    .ats-header h1 {
+                        margin: 0 0 8px;
+                        font-size: 32px;
+                    }
+
+                    .ats-header p {
+                        margin: 0;
+                        color: #666;
+                    }
+
+                    .ats-user-section {
+                        display: flex;
+                        align-items: center;
+                        gap: 20px;
+                    }
+
+                    .ats-user-info {
+                        display: flex;
+                        flex-direction: column;
+                        text-align: right;
+                    }
+
+                    .ats-user-info strong {
+                        font-size: 16px;
+                    }
+
+                    .ats-user-info span {
+                        color: #666;
+                        font-size: 14px;
+                        margin-top: 3px;
+                    }
+
+                    .ats-user-info small {
+                        color: #2563eb;
+                        margin-top: 4px;
+                        font-weight: bold;
+                    }
+
+                    .ats-logout-btn {
+                        padding: 10px 18px;
+                        border: none;
+                        border-radius: 8px;
+                        background: #111827;
+                        color: white;
+                        cursor: pointer;
+                    }
+
+                    .ats-applicant-content {
+                        max-width: 1100px;
+                        margin: auto;
+                    }
+
+                    .ats-welcome-card {
+                        background: white;
+                        border-radius: 16px;
+                        padding: 35px;
+                        text-align: center;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+                    }
+
+                    .ats-welcome-icon {
+                        font-size: 45px;
+                        margin-bottom: 10px;
+                    }
+
+                    .ats-welcome-card h2 {
+                        margin: 10px 0;
+                        font-size: 26px;
+                    }
+
+                    .ats-welcome-card p {
+                        max-width: 600px;
+                        margin: auto;
+                        color: #666;
+                        line-height: 1.6;
+                    }
+
+                    .ats-applicant-actions {
+                        display: grid;
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 25px;
+                        margin-top: 25px;
+                    }
+
+                    .ats-action-card {
+                        background: white;
+                        border-radius: 16px;
+                        padding: 30px;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+                    }
+
+                    .ats-action-icon {
+                        font-size: 35px;
+                    }
+
+                    .ats-action-card h3 {
+                        font-size: 21px;
+                        margin: 15px 0 8px;
+                    }
+
+                    .ats-action-card p {
+                        color: #666;
+                        line-height: 1.5;
+                        margin-bottom: 20px;
+                    }
+
+                    .ats-create-btn,
+                    .ats-view-btn {
+                        padding: 11px 18px;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                    }
+
+                    .ats-create-btn {
+                        background: #111827;
+                        color: white;
+                    }
+
+                    .ats-view-btn {
+                        background: #e5e7eb;
+                        color: #111827;
+                    }
+
+                    @media (max-width: 700px) {
+
+                        .ats-dashboard {
+                            padding: 20px;
+                        }
+
+                        .ats-header {
+                            flex-direction: column;
+                            align-items: flex-start;
+                            gap: 25px;
+                        }
+
+                        .ats-user-section {
+                            width: 100%;
+                            justify-content: space-between;
+                        }
+
+                        .ats-user-info {
+                            text-align: left;
+                        }
+
+                        .ats-applicant-actions {
+                            grid-template-columns: 1fr;
+                        }
+                    }
+
+                `}</style>
+
+            </div>
+        );
+    }
+
+
+    // ======================================
+    // RECRUITER DASHBOARD
+    // ======================================
+
+    return <RecruiterDashboard
+        user={user}
+        logout={logout}
+        navigate={navigate}
+    />;
+};
+
+
+// =====================================================
+// RECRUITER DASHBOARD COMPONENT
+// =====================================================
+
+const RecruiterDashboard = ({
+    user,
+    logout,
+    navigate
+}) => {
+
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -27,12 +357,15 @@ const Dashboard = () => {
         employmentType: "Full-time"
     });
 
+
     // ======================================
     // FETCH JOBS
     // ======================================
 
     const fetchJobs = async () => {
+
         try {
+
             setLoading(true);
             setError("");
 
@@ -41,14 +374,12 @@ const Dashboard = () => {
             const allJobs =
                 response.data.jobs || [];
 
-            // Get current user's ID
             const currentUserId =
                 user?._id || user?.id;
 
-            // Only show jobs created by
-            // the logged-in recruiter
             const recruiterJobs =
                 allJobs.filter((job) => {
+
                     const recruiterId =
                         job.recruiter?._id ||
                         job.recruiter?.id ||
@@ -58,47 +389,64 @@ const Dashboard = () => {
                         String(recruiterId) ===
                         String(currentUserId)
                     );
+
                 });
 
             setJobs(recruiterJobs);
 
         } catch (error) {
+
             setError(
                 error.response?.data?.error ||
                 "Unable to load jobs."
             );
+
         } finally {
+
             setLoading(false);
+
         }
     };
 
+
     useEffect(() => {
-        if (user) {
+
+        if (user?.role === "recruiter") {
             fetchJobs();
         }
+
     }, [user]);
 
+
     // ======================================
-    // HANDLE FORM CHANGE
+    // FORM CHANGE
     // ======================================
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+
+        const {
+            name,
+            value
+        } = e.target;
 
         setFormData((previous) => ({
             ...previous,
             [name]: value
         }));
+
     };
+
 
     // ======================================
     // CREATE JOB
     // ======================================
 
     const handleCreateJob = async (e) => {
+
         e.preventDefault();
 
         try {
+
             setCreating(true);
             setError("");
 
@@ -108,22 +456,33 @@ const Dashboard = () => {
                     .map((skill) => skill.trim())
                     .filter(Boolean);
 
-            const response = await API.post(
-                "/jobs",
-                {
+            const response =
+                await API.post("/jobs", {
+
                     title: formData.title,
+
                     description:
                         formData.description,
-                    company: formData.company,
-                    location: formData.location,
-                    skills: skillsArray,
+
+                    company:
+                        formData.company,
+
+                    location:
+                        formData.location,
+
+                    skills:
+                        skillsArray,
+
                     experience:
                         formData.experience,
-                    salary: formData.salary,
+
+                    salary:
+                        formData.salary,
+
                     employmentType:
                         formData.employmentType
-                }
-            );
+
+                });
 
             const newJob =
                 response.data.job;
@@ -147,29 +506,37 @@ const Dashboard = () => {
             setShowCreateForm(false);
 
         } catch (error) {
+
             setError(
                 error.response?.data?.error ||
                 "Unable to create job."
             );
+
         } finally {
+
             setCreating(false);
+
         }
     };
+
 
     // ======================================
     // ARCHIVE JOB
     // ======================================
 
     const handleArchiveJob = async (jobId) => {
-        const confirmed = window.confirm(
-            "Are you sure you want to archive this job?"
-        );
+
+        const confirmed =
+            window.confirm(
+                "Are you sure you want to archive this job?"
+            );
 
         if (!confirmed) {
             return;
         }
 
         try {
+
             setError("");
 
             await API.delete(
@@ -184,38 +551,50 @@ const Dashboard = () => {
             );
 
         } catch (error) {
+
             setError(
                 error.response?.data?.error ||
                 "Unable to archive job."
             );
+
         }
     };
+
 
     // ======================================
     // LOGOUT
     // ======================================
 
     const handleLogout = () => {
+
         logout();
         navigate("/login");
+
     };
 
+
     // ======================================
-    // DASHBOARD STATS
+    // STATS
     // ======================================
 
-    const totalJobs = jobs.length;
+    const totalJobs =
+        jobs.length;
 
-    const activeJobs = jobs.filter(
-        (job) => job.status === "active"
-    ).length;
+    const activeJobs =
+        jobs.filter(
+            (job) =>
+                job.status === "active"
+        ).length;
+
 
     // ======================================
     // LOADING
     // ======================================
 
     if (loading) {
+
         return (
+
             <div className="ats-dashboard">
 
                 <div className="ats-state-card">
@@ -232,19 +611,19 @@ const Dashboard = () => {
                 </div>
 
             </div>
+
         );
+
     }
 
+
     // ======================================
-    // DASHBOARD
+    // RECRUITER UI
     // ======================================
 
     return (
-        <div className="ats-dashboard">
 
-            {/* ==================================
-                HEADER
-            ================================== */}
+        <div className="ats-dashboard">
 
             <header className="ats-header">
 
@@ -260,6 +639,7 @@ const Dashboard = () => {
                     </p>
 
                 </div>
+
 
                 <div className="ats-user-section">
 
@@ -279,6 +659,7 @@ const Dashboard = () => {
 
                     </div>
 
+
                     <button
                         className="ats-logout-btn"
                         onClick={handleLogout}
@@ -291,10 +672,6 @@ const Dashboard = () => {
             </header>
 
 
-            {/* ==================================
-                ERROR
-            ================================== */}
-
             {error && (
                 <div className="ats-error">
                     {error}
@@ -302,9 +679,7 @@ const Dashboard = () => {
             )}
 
 
-            {/* ==================================
-                STATISTICS
-            ================================== */}
+            {/* STATS */}
 
             <section className="ats-stats">
 
@@ -349,9 +724,7 @@ const Dashboard = () => {
             </section>
 
 
-            {/* ==================================
-                JOB SECTION HEADER
-            ================================== */}
+            {/* JOB SECTION */}
 
             <section className="ats-job-section">
 
@@ -370,6 +743,7 @@ const Dashboard = () => {
 
                     </div>
 
+
                     <button
                         className="ats-create-btn"
                         onClick={() =>
@@ -386,14 +760,15 @@ const Dashboard = () => {
                 </div>
 
 
-                {/* ==================================
-                    CREATE JOB FORM
-                ================================== */}
+                {/* CREATE FORM */}
 
                 {showCreateForm && (
+
                     <form
                         className="ats-create-form"
-                        onSubmit={handleCreateJob}
+                        onSubmit={
+                            handleCreateJob
+                        }
                     >
 
                         <h2>
@@ -604,15 +979,15 @@ const Dashboard = () => {
                         </button>
 
                     </form>
+
                 )}
 
 
-                {/* ==================================
-                    NO JOBS
-                ================================== */}
+                {/* NO JOBS */}
 
                 {!showCreateForm &&
                     jobs.length === 0 && (
+
                         <div className="ats-empty">
 
                             <div>
@@ -641,14 +1016,14 @@ const Dashboard = () => {
                             </button>
 
                         </div>
+
                     )}
 
 
-                {/* ==================================
-                    JOB CARDS
-                ================================== */}
+                {/* JOB CARDS */}
 
                 {jobs.length > 0 && (
+
                     <div className="ats-job-grid">
 
                         {jobs.map((job) => (
@@ -672,9 +1047,8 @@ const Dashboard = () => {
 
                                     </div>
 
-                                    <span
-                                        className="ats-status"
-                                    >
+
+                                    <span className="ats-status">
                                         {job.status}
                                     </span>
 
@@ -704,8 +1078,6 @@ const Dashboard = () => {
                                 </div>
 
 
-                                {/* SKILLS */}
-
                                 <div className="ats-skills">
 
                                     {(Array.isArray(
@@ -718,6 +1090,7 @@ const Dashboard = () => {
                                             skill,
                                             index
                                         ) => (
+
                                             <span
                                                 key={
                                                     index
@@ -725,13 +1098,12 @@ const Dashboard = () => {
                                             >
                                                 {skill}
                                             </span>
+
                                         )
                                     )}
 
                                 </div>
 
-
-                                {/* ACTIONS */}
 
                                 <div className="ats-job-actions">
 
@@ -777,11 +1149,13 @@ const Dashboard = () => {
                         ))}
 
                     </div>
+
                 )}
 
             </section>
 
         </div>
+
     );
 };
 
