@@ -8,51 +8,6 @@ The system allows recruiters to create and manage job openings, while applicants
 
 Traditional recruitment often requires recruiters to manually review large numbers of resumes. This project uses AI to assist recruiters by analyzing an applicant's resume against a job description and generating a structured analysis.
 
-Core Flow
-
-Applicant
-   │
-   ├── Register / Login
-   │
-   ├── Browse Jobs
-   │
-   ├── Apply for Job
-   │
-   └── Upload Resume (PDF)
-            │
-            ▼
-      PDF Text Extraction
-            │
-            ▼
-       AI Resume Analysis
-            │
-            ▼
-   ┌─────────────────────────┐
-   │ Match Score             │
-   │ Skills                  │
-   │ Experience              │
-   │ Strengths               │
-   │ Missing Skills          │
-   │ Summary                 │
-   └─────────────────────────┘
-            │
-            ▼
-       Application Stored
-            │
-            ▼
-       Recruiter Dashboard
-            │
-            ├── Candidate Ranking
-            ├── Search & Filters
-            ├── AI Score Sorting
-            └── Application Pipeline
-                         │
-                         ▼
-                 Status Update
-                         │
-                         ▼
-                  Email Notification
-
 ✨ Features
 
 👤 Applicant
@@ -197,85 +152,6 @@ Nodemon
 
 ESLint
 
-🏗️ Project Structure
-
-task-management-system/
-│
-├── backend/
-│   │
-│   ├── config/
-│   │   └── db.js
-│   │
-│   ├── controllers/
-│   │   ├── applicationController.js
-│   │   ├── authController.js
-│   │   ├── jobController.js
-│   │   └── ...
-│   │
-│   ├── middleware/
-│   │   ├── auth.js
-│   │   ├── role.js
-│   │   └── uploadResume.js
-│   │
-│   ├── models/
-│   │   ├── application.js
-│   │   ├── job.js
-│   │   └── user.js
-│   │
-│   ├── routes/
-│   │   ├── applicationRoutes.js
-│   │   ├── authroute.js
-│   │   ├── jobRoutes.js
-│   │   └── ...
-│   │
-│   ├── services/
-│   │   ├── aiService.js
-│   │   └── emailService.js
-│   │
-│   ├── utils/
-│   │   └── resumeParser.js
-│   │
-│   ├── uploads/
-│   │   └── resumes/
-│   │
-│   ├── .env
-│   ├── .gitignore
-│   ├── package.json
-│   └── server.js
-│
-├── frontend/
-│   │
-│   ├── public/
-│   │
-│   ├── src/
-│   │   ├── components/
-│   │   │   └── ProtectedRoute.jsx
-│   │   │
-│   │   ├── context/
-│   │   │   ├── AuthContext.jsx
-│   │   │   └── useAuth.js
-│   │   │
-│   │   ├── pages/
-│   │   │   ├── Login.jsx
-│   │   │   ├── Register.jsx
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── JobBoard.jsx
-│   │   │   ├── JobDetails.jsx
-│   │   │   ├── ApplyJob.jsx
-│   │   │   ├── MyApplications.jsx
-│   │   │   ├── CandidateRanking.jsx
-│   │   │   └── ApplicationPipeline.jsx
-│   │   │
-│   │   ├── services/
-│   │   │   └── api.js
-│   │   │
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   │
-│   ├── package.json
-│   └── vite.config.js
-│
-└── README.md
 
 ⚙️ Prerequisites
 
@@ -297,9 +173,9 @@ Gmail account with an App Password (for email notifications)
 
 1. Clone the repository
 
-git clone https://github.com/RammiNandanwar/task-management-system.git
+git clone https://github.com/RammiNandanwar/ai-applicant-tracking-system.git
 
-cd task-management-system
+cd ai-applicant-tracking-system
 
 🔧 Backend Setup
 
