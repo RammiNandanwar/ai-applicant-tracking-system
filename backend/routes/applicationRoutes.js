@@ -1,21 +1,16 @@
 const express = require("express");
-
 const router = express.Router();
 
 const {
     applyForJob,
     getMyApplications,
-    getJobApplications
+    getJobApplications,
+    updateApplicationStatus
 } = require("../controllers/applicationController");
 
 const authMiddleware = require("../middleware/auth");
-
-const authorizeRole =
-    require("../middleware/role");
-
-const uploadResume =
-    require("../middleware/uploadResume");
-
+const authorizeRole = require("../middleware/role");
+const uploadResume = require("../middleware/uploadResume");
 
 // ======================================
 // APPLICANT
@@ -28,7 +23,6 @@ router.post(
     uploadResume.single("resume"),
     applyForJob
 );
-
 
 router.get(
     "/my",
@@ -47,6 +41,13 @@ router.get(
     authMiddleware,
     authorizeRole("recruiter"),
     getJobApplications
+);
+
+router.patch(
+    "/:applicationId/status",
+    authMiddleware,
+    authorizeRole("recruiter"),
+    updateApplicationStatus
 );
 
 
